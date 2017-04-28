@@ -1,4 +1,30 @@
 import numpy as np
+import math
+
+def dct(block):
+    def block_cos(u, v):
+        def cos_expr(xy, uv):
+            return math.cos((2 * xy + 1) * uv * math.pi / 16)
+
+        res = 0.0
+        for x in range(rows):
+            for y in range(cols):
+                res += block[x, y] * cos_expr(x, u) * cos_expr(y, v)
+        return res
+
+    def alpha(n):
+        return 1 / math.sqrt(2) if n == 0 else 1
+
+    rows, cols = block.shape
+
+    # transformed matrix
+    trans = np.empty((rows, cols), np.float64)
+
+    for u in range(rows):
+        for v in range(cols):
+            trans[u, v] = alpha(u) * alpha(v) * block_cos(u, v) / 4
+
+    return trans
 
 def zigzag(block):
     # move the point to different directions
