@@ -62,12 +62,12 @@ def zigzag(block):
             else:
                 move_up = False
                 if inbounds(move(RIGHT, point)): point = move(RIGHT, point)
-                else: move(DOWN, point)
+                else: point = move(DOWN, point)
         else:
             if inbounds(move(DOWN_LEFT, point)):
                 point = move(DOWN_LEFT, point)
             else:
                 move_up = True
                 if inbounds(move(DOWN, point)): point = move(DOWN, point)
-                else: move(RIGHT, point)
+                else: point = move(RIGHT, point)
     return arr
