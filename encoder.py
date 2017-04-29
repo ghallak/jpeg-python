@@ -27,14 +27,19 @@ def dct(block):
     return trans
 
 def zigzag(block):
-    # move the point to different directions
-    up    = lambda point: (point[0] - 1, point[1])
-    down  = lambda point: (point[0] + 1, point[1])
-    right = lambda point: (point[0], point[1] + 1)
-    left  = lambda point: (point[0], point[1] - 1)
+    # constants for directions
+    UP, DOWN, RIGHT, LEFT, UP_RIGHT, DOWN_LEFT = range(6)
 
-    up_right  = lambda point: up(right(point))
-    down_left = lambda point: down(left(point))
+    # move the point in different directions
+    def move(direction, point):
+        return {
+            UP:        lambda point: (point[0] - 1, point[1]),
+            DOWN:      lambda point: (point[0] + 1, point[1]),
+            RIGHT:     lambda point: (point[0], point[1] + 1),
+            LEFT:      lambda point: (point[0], point[1] - 1),
+            UP_RIGHT:  lambda point: move(UP, move(RIGHT, point)),
+            DOWN_LEFT: lambda point: move(DOWN, move(LEFT, point)),
+        }[direction](point)
 
     rows, cols = block.shape
 
@@ -45,22 +50,24 @@ def zigzag(block):
     # start in the top-left cell
     point = (0, 0)
 
-    # TODO: rename this variable later
-    even = True
+    # True when moving up-right, False when moving down-left
+    move_up = True
 
     arr = np.empty((rows * cols, 1), np.int16);
     for i in range(rows * cols):
         arr[i] = block[point]
-        if even:
-            if inbounds(up_right(point)):
-                point = up_right(point)
+        if move_up:
+            if inbounds(move(UP_RIGHT, point)):
+                point = move(UP_RIGHT, point)
             else:
-                even = False
-                point = right(point) if inbounds(right(point)) else down(point)
+                move_up = False
+                if inbounds(move(RIGHT, point)): point = move(RIGHT, point)
+                else: move(DOWN, point)
         else:
-            if inbounds(down_left(point)):
-                point = down_left(point)
+            if inbounds(move(DOWN_LEFT, point)):
+                point = move(DOWN_LEFT, point)
             else:
-                even = True
-                point = down(point) if inbounds(down(point)) else right(point)
+                move_up = True
+                if inbounds(move(DOWN, point)): point = move(DOWN, point)
+                else: move(RIGHT, point)
     return arr
