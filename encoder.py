@@ -53,7 +53,7 @@ def zigzag(block):
     # True when moving up-right, False when moving down-left
     move_up = True
 
-    arr = np.empty((rows * cols, 1), np.int16);
+    arr = np.empty((rows * cols), np.int16);
     for i in range(rows * cols):
         arr[i] = block[point]
         if move_up:
@@ -71,3 +71,27 @@ def zigzag(block):
                 if inbounds(move(DOWN, point)): point = move(DOWN, point)
                 else: point = move(RIGHT, point)
     return arr
+
+def run_length_encode(arr):
+    # determine where the sequence is ending prematurely
+    last_nonzero = -1
+    for i, elem in enumerate(arr):
+        if elem != 0:
+            last_nonzero = i
+
+    # each symbol is a (RUNLENGTH, SIZE) tuple
+    symbols = []
+
+    run_length = 0
+
+    for i, elem in enumerate(arr):
+        if i > last_nonzero:
+            symbols.append((0, 0))
+            break
+        elif elem == 0 and run_length < 15:
+            run_length += 1
+        else:
+            size = int(math.log2(abs(elem))) + 1 if elem != 0 else 0
+            symbols.append((run_length, size))
+            run_length = 0
+    return symbols
