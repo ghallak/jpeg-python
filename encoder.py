@@ -100,6 +100,16 @@ def zigzag(block):
                 else: point = move(RIGHT, point)
     return arr
 
+
+def bits_required(n):
+    n = abs(n)
+    result = 0
+    while n > 0:
+        n >>= 1
+        result += 1
+    return result
+
+
 def run_length_encode(arr):
     # determine where the sequence is ending prematurely
     last_nonzero = -1
@@ -110,16 +120,32 @@ def run_length_encode(arr):
     # each symbol is a (RUNLENGTH, SIZE) tuple
     symbols = []
 
+    # values are binary representations of array elements using SIZE bits
+    values = []
+
+    # return the binary representation of n using SIZE bits
+    def binary_str(n):
+        if n == 0:
+            return ''
+        s = bin(abs(n))[2:]
+
+        # change every 0 to 1 and vice verse when n is negative
+        if n < 0:
+            s = ''.join(map(lambda c: '0' if c == '1' else '1', s))
+        return s
+
     run_length = 0
 
     for i, elem in enumerate(arr):
         if i > last_nonzero:
             symbols.append((0, 0))
+            values.append(binary_str(0))
             break
         elif elem == 0 and run_length < 15:
             run_length += 1
         else:
-            size = int(math.log2(abs(elem))) + 1 if elem != 0 else 0
+            size = bits_required(elem)
             symbols.append((run_length, size))
+            values.append(binary_str(elem))
             run_length = 0
-    return symbols
+    return symbols, values
