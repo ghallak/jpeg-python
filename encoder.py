@@ -135,8 +135,36 @@ def run_length_encode(arr):
     return symbols, values
 
 
+def uint_to_binstr(number, size):
+    return bin(number)[2:][-size:].zfill(size)
+
+
 def write_to_file(dc, ac, blocks_count, tables, filename='image.dat'):
     f = open('data/' + filename, 'w')
+
+    for table_name in ['dc_y', 'ac_y', 'dc_c', 'ac_c']:
+
+        # 16 bit for 'table_size'
+        f.write(uint_to_binstr(len(tables[table_name]), 16))
+
+        for key, value in tables[table_name].items():
+            if table_name in {'dc_y', 'dc_c'}:
+                # 4 bits for the 'category'
+                # 4 bits for 'code_length'
+                # 'code_length' bits for 'huffman_code'
+                f.write(uint_to_binstr(key, 4))
+                f.write(uint_to_binstr(len(value), 4))
+                f.write(value)
+            else:
+                # 4 bits for 'run_length'
+                # 4 bits for 'size'
+                # 4 bits for 'code_length'
+                # 'code_length' bits for 'huffman_code'
+                f.write(uint_to_binstr(key[0], 4))
+                f.write(uint_to_binstr(key[1], 4))
+                f.write(uint_to_binstr(len(value), 4))
+                f.write(value)
+
     for b in range(blocks_count):
         for c in range(3):
             dc_code = bits_required(dc[b, c])
