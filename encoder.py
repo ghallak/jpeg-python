@@ -50,9 +50,10 @@ def quantize(block, component):
     else:
         raise ValueError((
             "component should be either 'lum' or 'chrom', "
-            "but '{comp}' was found").format(comp = component))
+            "but '{comp}' was found").format(comp=component))
 
     return (block / q).round().astype(np.int8)
+
 
 def zigzag(block):
     # constants for directions
@@ -81,7 +82,7 @@ def zigzag(block):
     # True when moving up-right, False when moving down-left
     move_up = True
 
-    arr = np.empty((rows * cols), np.int16);
+    arr = np.empty((rows * cols), np.int16)
     for i in range(rows * cols):
         arr[i] = block[point]
         if move_up:
@@ -89,15 +90,19 @@ def zigzag(block):
                 point = move(UP_RIGHT, point)
             else:
                 move_up = False
-                if inbounds(move(RIGHT, point)): point = move(RIGHT, point)
-                else: point = move(DOWN, point)
+                if inbounds(move(RIGHT, point)):
+                    point = move(RIGHT, point)
+                else:
+                    point = move(DOWN, point)
         else:
             if inbounds(move(DOWN_LEFT, point)):
                 point = move(DOWN_LEFT, point)
             else:
                 move_up = True
-                if inbounds(move(DOWN, point)): point = move(DOWN, point)
-                else: point = move(RIGHT, point)
+                if inbounds(move(DOWN, point)):
+                    point = move(DOWN, point)
+                else:
+                    point = move(RIGHT, point)
     return arr
 
 
