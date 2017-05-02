@@ -50,7 +50,7 @@ def write_to_file(dc, ac, blocks_count, tables, filename='image.dat'):
 
     for table_name in ['dc_y', 'ac_y', 'dc_c', 'ac_c']:
 
-        # 16 bit for 'table_size'
+        # 16 bits for 'table_size'
         f.write(uint_to_binstr(len(tables[table_name]), 16))
 
         for key, value in tables[table_name].items():
@@ -64,30 +64,30 @@ def write_to_file(dc, ac, blocks_count, tables, filename='image.dat'):
             else:
                 # 4 bits for 'run_length'
                 # 4 bits for 'size'
-                # 4 bits for 'code_length'
+                # 8 bits for 'code_length'
                 # 'code_length' bits for 'huffman_code'
                 f.write(uint_to_binstr(key[0], 4))
                 f.write(uint_to_binstr(key[1], 4))
-                f.write(uint_to_binstr(len(value), 4))
+                f.write(uint_to_binstr(len(value), 8))
                 f.write(value)
+
+    # 32 bits for 'blocks_count'
+    f.write(uint_to_binstr(blocks_count, 32))
 
     for b in range(blocks_count):
         for c in range(3):
-            dc_code = bits_required(dc[b, c])
+            category = bits_required(dc[b, c])
             symbols, values = run_length_encode(ac[b, :, c])
 
-            if c == 0:
-                dc_table = tables['dc_y']
-                ac_table = tables['ac_y']
-            else:
-                dc_table = tables['dc_c']
-                ac_table = tables['ac_c']
+            dc_table = tables['dc_y'] if c == 0 else tables['dc_c']
+            ac_table = tables['ac_y'] if c == 0 else tables['ac_c']
 
-            f.write(dc_table[dc_code])
+            f.write(dc_table[category])
+            f.write(int_to_binstr(dc[b, c]))
+
             for i in range(len(symbols)):
                 f.write(ac_table[tuple(symbols[i])])
-                if symbols[i][1] != 0:
-                    f.write(values[i])
+                f.write(values[i])
     f.close()
 
 
@@ -95,7 +95,7 @@ def main():
     image = Image.open('data/lena.tif')
     ycbcr = image.convert('YCbCr')
 
-    npmat = np.array(ycbcr, dtype=np.int16)
+    npmat = np.array(ycbcr, dtype=np.uint8)
 
     rows, cols = npmat.shape[0], npmat.shape[1]
 
@@ -107,8 +107,8 @@ def main():
                           "should both be mutiples of 8"))
 
     # dc is the top-left cell of the block, ac are all the other cells
-    dc = np.empty((blocks_count, 3), dtype=np.int16)
-    ac = np.empty((blocks_count, 63, 3), dtype=np.int16)
+    dc = np.empty((blocks_count, 3), dtype=np.int32)
+    ac = np.empty((blocks_count, 63, 3), dtype=np.int32)
 
     for i in range(0, rows, 8):
         for j in range(0, cols, 8):
