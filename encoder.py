@@ -1,97 +1,18 @@
 import math
 import numpy as np
+from utils import *
 from scipy import fftpack
 from PIL import Image
 from huffman import HuffmanTree
 
 
 def quantize(block, component):
-    # quantization tables are taken from the original JPEG standard
-    # (https://www.w3.org/Graphics/JPEG/itu-t81.pdf) page: 143
-    if component == 'lum':
-        q = np.array([[16, 11, 10, 16, 24,  40,  51,  61 ],
-                      [12, 12, 14, 19, 26,  58,  60,  55 ],
-                      [14, 13, 16, 24, 40,  57,  69,  56 ],
-                      [14, 17, 22, 29, 51,  87,  80,  62 ],
-                      [18, 22, 37, 56, 68,  109, 103, 77 ],
-                      [24, 35, 55, 64, 81,  104, 113, 92 ],
-                      [49, 64, 78, 87, 103, 121, 120, 101],
-                      [72, 92, 95, 98, 112, 100, 103, 99 ]])
-    elif component == 'chrom':
-        q = np.array([[17, 18, 24, 47, 99, 99, 99, 99],
-                      [18, 21, 26, 66, 99, 99, 99, 99],
-                      [24, 26, 56, 99, 99, 99, 99, 99],
-                      [47, 66, 99, 99, 99, 99, 99, 99],
-                      [99, 99, 99, 99, 99, 99, 99, 99],
-                      [99, 99, 99, 99, 99, 99, 99, 99],
-                      [99, 99, 99, 99, 99, 99, 99, 99],
-                      [99, 99, 99, 99, 99, 99, 99, 99]])
-    else:
-        raise ValueError((
-            "component should be either 'lum' or 'chrom', "
-            "but '{comp}' was found").format(comp=component))
-
-    return (block / q).round().astype(np.int8)
+    q = load_quantization_table(component)
+    return (block / q).round().astype(np.int32)
 
 
-def zigzag(block):
-    # constants for directions
-    UP, DOWN, RIGHT, LEFT, UP_RIGHT, DOWN_LEFT = range(6)
-
-    # move the point in different directions
-    def move(direction, point):
-        return {
-            UP:        lambda point: (point[0] - 1, point[1]),
-            DOWN:      lambda point: (point[0] + 1, point[1]),
-            RIGHT:     lambda point: (point[0], point[1] + 1),
-            LEFT:      lambda point: (point[0], point[1] - 1),
-            UP_RIGHT:  lambda point: move(UP, move(RIGHT, point)),
-            DOWN_LEFT: lambda point: move(DOWN, move(LEFT, point)),
-        }[direction](point)
-
-    rows, cols = block.shape
-
-    # return true if point is inside the block bounds
-    def inbounds(point):
-        return 0 <= point[0] < rows and 0 <= point[1] < cols
-
-    # start in the top-left cell
-    point = (0, 0)
-
-    # True when moving up-right, False when moving down-left
-    move_up = True
-
-    arr = np.empty((rows * cols), np.int16)
-    for i in range(rows * cols):
-        arr[i] = block[point]
-        if move_up:
-            if inbounds(move(UP_RIGHT, point)):
-                point = move(UP_RIGHT, point)
-            else:
-                move_up = False
-                if inbounds(move(RIGHT, point)):
-                    point = move(RIGHT, point)
-                else:
-                    point = move(DOWN, point)
-        else:
-            if inbounds(move(DOWN_LEFT, point)):
-                point = move(DOWN_LEFT, point)
-            else:
-                move_up = True
-                if inbounds(move(DOWN, point)):
-                    point = move(DOWN, point)
-                else:
-                    point = move(RIGHT, point)
-    return arr
-
-
-def bits_required(n):
-    n = abs(n)
-    result = 0
-    while n > 0:
-        n >>= 1
-        result += 1
-    return result
+def block_to_zigzag(block):
+    return np.array([block[point] for point in zigzag_points(*block.shape)])
 
 
 def run_length_encode(arr):
@@ -107,36 +28,21 @@ def run_length_encode(arr):
     # values are binary representations of array elements using SIZE bits
     values = []
 
-    # return the binary representation of n using SIZE bits
-    def binary_str(n):
-        if n == 0:
-            return ''
-        s = bin(abs(n))[2:]
-
-        # change every 0 to 1 and vice verse when n is negative
-        if n < 0:
-            s = ''.join(map(lambda c: '0' if c == '1' else '1', s))
-        return s
-
     run_length = 0
 
     for i, elem in enumerate(arr):
         if i > last_nonzero:
             symbols.append((0, 0))
-            values.append(binary_str(0))
+            values.append(int_to_binstr(0))
             break
         elif elem == 0 and run_length < 15:
             run_length += 1
         else:
             size = bits_required(elem)
             symbols.append((run_length, size))
-            values.append(binary_str(elem))
+            values.append(int_to_binstr(elem))
             run_length = 0
     return symbols, values
-
-
-def uint_to_binstr(number, size):
-    return bin(number)[2:][-size:].zfill(size)
 
 
 def write_to_file(dc, ac, blocks_count, tables, filename='image.dat'):
@@ -219,13 +125,10 @@ def main():
                 dct_matrix = fftpack.dct(block, norm='ortho')
                 quant_matrix = quantize(dct_matrix,
                                         'lum' if k == 0 else 'chrom')
-                zz = zigzag(quant_matrix)
+                zz = block_to_zigzag(quant_matrix)
 
                 dc[block_index, k] = zz[0]
                 ac[block_index, :, k] = zz[1:]
-
-    def flatten(l):
-        return [item for sublist in l for item in sublist]
 
     H_DC_Y = HuffmanTree(np.vectorize(bits_required)(dc[:, 0]))
     H_DC_C = HuffmanTree(np.vectorize(bits_required)(dc[:, 1:].flat))
