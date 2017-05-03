@@ -59,17 +59,11 @@ class HuffmanTree:
 
         # dictionaries to store huffman table
         self.__value_to_bitstring = dict()
-        self.__bitstring_to_value = dict()
 
     def value_to_bitstring_table(self):
         if len(self.__value_to_bitstring.keys()) == 0:
             self.__create_huffman_table()
         return self.__value_to_bitstring
-
-    def bitstring_to_value_table(self):
-        if len(self.__bitstring_to_value.keys()) == 0:
-            self.__create_huffman_table()
-        return self.__bitstring_to_value
 
     def __create_huffman_table(self):
         def tree_traverse(current_node, bitstring=''):
@@ -77,7 +71,6 @@ class HuffmanTree:
                 return
             if current_node.is_leaf():
                 self.__value_to_bitstring[current_node.value] = bitstring
-                self.__bitstring_to_value[bitstring] = current_node.value
                 return
             tree_traverse(current_node.left_child, bitstring + '0')
             tree_traverse(current_node.right_child, bitstring + '1')
