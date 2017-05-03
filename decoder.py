@@ -1,5 +1,9 @@
 import numpy as np
+import math
 from utils import *
+from pprint import pprint as pp
+from scipy import fftpack
+from PIL import Image
 
 
 class JPEGFileReader:
@@ -118,4 +122,57 @@ def read_image_file(filename):
                         ac[block_index, cells_count, component] = value
                     cells_count += 1
 
-    return dc, ac, tables
+    return dc, ac, tables, blocks_count
+
+
+def zigzag_to_block(zigzag):
+    # assuming that the width and the height of the block are equal
+    rows = cols = int(math.sqrt(len(zigzag)))
+
+    if rows * cols != len(zigzag):
+        raise ValueError("length of zigzag should be a perfect square")
+
+    block = np.empty((rows, cols), np.int32)
+
+    for i, point in enumerate(zigzag_points(rows, cols)):
+        block[point] = zigzag[i]
+
+    return block
+
+
+def dequantize(block, component):
+    q = load_quantization_table(component)
+    return block * q
+
+
+def main():
+    dc, ac, tables, blocks_count = read_image_file('data/image.dat')
+
+    # assuming that the block is a 8x8 square
+    block_side = 8
+
+    # assuming that the image height and width are equal
+    image_side = int(math.sqrt(blocks_count)) * block_side
+
+    blocks_per_line = image_side // block_side
+
+    npmat = np.empty((image_side, image_side, 3), dtype=np.uint8)
+
+    for block_index in range(blocks_count):
+        i = block_index // blocks_per_line * block_side
+        j = block_index % blocks_per_line * block_side
+
+        for c in range(3):
+            zigzag = [dc[block_index, c]] + list(ac[block_index, :, c])
+            quant_matrix = zigzag_to_block(zigzag)
+            dct_matrix = dequantize(quant_matrix, 'lum' if c == 0 else 'chrom')
+            block = fftpack.idct(dct_matrix, norm='ortho')
+            npmat[i:i+8, j:j+8, c] = block + 128
+
+    image = Image.fromarray(npmat, 'YCbCr')
+    image = image.convert('RGB')
+    image.show()
+
+
+if __name__ == "__main__":
+    main()
