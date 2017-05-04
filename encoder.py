@@ -1,3 +1,5 @@
+import argparse
+import os
 import math
 import numpy as np
 from utils import *
@@ -45,8 +47,13 @@ def run_length_encode(arr):
     return symbols, values
 
 
-def write_to_file(dc, ac, blocks_count, tables, filename='image.dat'):
-    f = open('data/' + filename, 'w')
+def write_to_file(filepath, dc, ac, blocks_count, tables):
+    try:
+        f = open(filepath, 'w')
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+                "No such directory: {}".format(
+                    os.path.dirname(filepath))) from e
 
     for table_name in ['dc_y', 'ac_y', 'dc_c', 'ac_c']:
 
@@ -92,7 +99,15 @@ def write_to_file(dc, ac, blocks_count, tables, filename='image.dat'):
 
 
 def main():
-    image = Image.open('data/lena.tif')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="path to the input image")
+    parser.add_argument("output", help="path to the output image")
+    args = parser.parse_args()
+
+    input_file = args.input
+    output_file = args.output
+
+    image = Image.open(input_file)
     ycbcr = image.convert('YCbCr')
 
     npmat = np.array(ycbcr, dtype=np.uint8)
@@ -144,7 +159,7 @@ def main():
               'dc_c': H_DC_C.value_to_bitstring_table(),
               'ac_c': H_AC_C.value_to_bitstring_table()}
 
-    write_to_file(dc, ac, blocks_count, tables)
+    write_to_file(output_file, dc, ac, blocks_count, tables)
 
 
 if __name__ == "__main__":

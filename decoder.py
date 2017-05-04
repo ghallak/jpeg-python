@@ -1,7 +1,7 @@
-import numpy as np
+import argparse
 import math
+import numpy as np
 from utils import *
-from pprint import pprint as pp
 from scipy import fftpack
 from PIL import Image
 
@@ -17,13 +17,14 @@ class JPEGFileReader:
     RUN_LENGTH_BITS = 4
     SIZE_BITS = 4
 
-    def __init__(self, filename):
-        self.__file = open(filename, 'r')
+    def __init__(self, filepath):
+        self.__file = open(filepath, 'r')
 
     def read_int(self, size):
         if size == 0:
             return 0
 
+        # the most significant bit indicates the sign of the number
         bin_num = self.__read_str(size)
         if bin_num[0] == '1':
             return self.__int2(bin_num)
@@ -78,8 +79,8 @@ class JPEGFileReader:
         return int(bin_num, 2)
 
 
-def read_image_file(filename):
-    reader = JPEGFileReader(filename)
+def read_image_file(filepath):
+    reader = JPEGFileReader(filepath)
 
     tables = dict()
     for table_name in ['dc_y', 'ac_y', 'dc_c', 'ac_c']:
@@ -146,7 +147,11 @@ def dequantize(block, component):
 
 
 def main():
-    dc, ac, tables, blocks_count = read_image_file('data/image.dat')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="path to the input image")
+    args = parser.parse_args()
+
+    dc, ac, tables, blocks_count = read_image_file(args.input)
 
     # assuming that the block is a 8x8 square
     block_side = 8
