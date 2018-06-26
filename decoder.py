@@ -146,6 +146,10 @@ def dequantize(block, component):
     return block * q
 
 
+def idct_2d(image):
+    return fftpack.idct(fftpack.idct(image.T, norm='ortho').T, norm='ortho')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="path to the input image")
@@ -171,7 +175,7 @@ def main():
             zigzag = [dc[block_index, c]] + list(ac[block_index, :, c])
             quant_matrix = zigzag_to_block(zigzag)
             dct_matrix = dequantize(quant_matrix, 'lum' if c == 0 else 'chrom')
-            block = fftpack.idct(dct_matrix, norm='ortho')
+            block = idct_2d(dct_matrix)
             npmat[i:i+8, j:j+8, c] = block + 128
 
     image = Image.fromarray(npmat, 'YCbCr')

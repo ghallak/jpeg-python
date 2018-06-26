@@ -17,6 +17,10 @@ def block_to_zigzag(block):
     return np.array([block[point] for point in zigzag_points(*block.shape)])
 
 
+def dct_2d(image):
+    return fftpack.dct(fftpack.dct(image.T, norm='ortho').T, norm='ortho')
+
+
 def run_length_encode(arr):
     # determine where the sequence is ending prematurely
     last_nonzero = -1
@@ -137,7 +141,7 @@ def main():
                 # [0, 255] --> [-128, 127]
                 block = npmat[i:i+8, j:j+8, k] - 128
 
-                dct_matrix = fftpack.dct(block, norm='ortho')
+                dct_matrix = dct_2d(block)
                 quant_matrix = quantize(dct_matrix,
                                         'lum' if k == 0 else 'chrom')
                 zz = block_to_zigzag(quant_matrix)
